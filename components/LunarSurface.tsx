@@ -71,9 +71,9 @@ const LunarSurface: React.FC<LunarSurfaceProps> = ({ rovers }) => {
         {/* Lander and Tower */}
         <g transform="translate(250, 200)">
           <rect x="-15" y="-15" width="30" height="30" fill="#b0c4de" stroke="#fff" strokeWidth="0.5" />
-          <text x="20" y="5" className="fill-white text-[12px] font-sans">Modulo Lunar</text>
-          <path d="M 0 -20 L 0 -50" stroke="#00ff88" strokeWidth="2" filter="url(#glow)" />
-          <path d="M 0 -50 L 10 -40 M 0 -50 L -10 -40" stroke="#00ff88" strokeWidth="2" />
+          <text x="20" y="5" className="fill-white text-[12px] font-sans">Módulo Lunar</text>
+          {/*<path d="M 0 -20 L 0 -50" stroke="#00ff88" strokeWidth="2" filter="url(#glow)" />
+          <path d="M 0 -50 L 10 -40 M 0 -50 L -10 -40" stroke="#00ff88" strokeWidth="2" />*/}
         </g>
 
         {/* Rovers */}
