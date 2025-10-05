@@ -113,8 +113,14 @@ const App: React.FC = () => {
             if (componentStatus[key] && rover.battery > 10) {
                 rover.battery -= 0.05;
                 rover.location[0] += (Math.random() - 0.5) * 2;
-                rover.location[1] += (Math.random() - 0.5) * 2;
+                rover.location[1] += (Math.random() - 0.5) * 2;                
                 rover.status = rover.battery > 50 ? (Math.random() > 0.5 ? 'activo' : 'muestreando') : 'en espera';
+
+                // Ensure rovers stay within a reasonable distance from the lunar module
+                const MAX_DISTANCE = 50; // Define maximum allowed distance
+                rover.location[0] = Math.max(-MAX_DISTANCE, Math.min(MAX_DISTANCE, rover.location[0]));
+                rover.location[1] = Math.max(-MAX_DISTANCE, Math.min(MAX_DISTANCE, rover.location[1]));
+
             } else {
                 rover.status = 'desconectado';
             }
