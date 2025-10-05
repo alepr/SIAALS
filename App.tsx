@@ -152,6 +152,11 @@ const App: React.FC = () => {
     // Wellness Score
     newMember.wellnessScore = ((100 - newMember.stressScore) + newMember.productivityScore) / 2;
 
+  // Asegurar valores finitos
+  if (!Number.isFinite(newMember.productivityScore)) newMember.productivityScore = 50;
+  if (!Number.isFinite(newMember.wellnessScore)) newMember.wellnessScore = 50;
+  if (!Number.isFinite(newMember.stressScore)) newMember.stressScore = 20;
+
     return newMember;
   }
 

@@ -2,24 +2,31 @@ import React from 'react';
 import type { MvpData, Rover } from '../types';
 import { WifiIcon, ThermometerIcon, BatteryIcon, SunIcon } from './Icons';
 
-const TelemetryItem: React.FC<{ label: string; value: string | number; unit?: string; colorClass?: string }> = ({ label, value, unit, colorClass = 'text-tech-green' }) => (
-  <div className="flex justify-between items-baseline text-sm min-w-0">
-    <span className="text-gray-400 truncate mr-2">{label}</span>
-    <span className={`font-orbitron font-medium ${colorClass} whitespace-nowrap truncate`}>{value}{unit}</span>
-  </div>
-);
+const TelemetryItem: React.FC<{ label: string; value: string | number; unit?: string; colorClass?: string }> = ({ label, value, unit, colorClass = 'text-tech-green' }) => {
+  const display = typeof value === 'number' ? (Number.isFinite(value) ? value : 0) : (value ?? '-');
+  return (
+    <div className="flex justify-between items-baseline text-sm min-w-0">
+      <span className="text-gray-400 truncate mr-2">{label}</span>
+      <span className={`font-orbitron font-medium ${colorClass} whitespace-nowrap truncate`}>{display}{unit}</span>
+    </div>
+  )
+};
 
-const ProgressBar: React.FC<{ label: string; value: number; colorClass: string }> = ({ label, value, colorClass }) => (
-  <div className="w-full min-w-0">
-    <div className="flex justify-between text-sm mb-1">
-      <span className="text-gray-400 truncate">{label}</span>
-      <span className="font-orbitron text-white whitespace-nowrap">{value.toFixed(1)}%</span>
+const ProgressBar: React.FC<{ label: string; value: number; colorClass: string }> = ({ label, value, colorClass }) => {
+  const v = Number.isFinite(value) ? value : 0;
+  const pct = Math.max(0, Math.min(100, v));
+  return (
+    <div className="w-full min-w-0">
+      <div className="flex justify-between text-sm mb-1">
+        <span className="text-gray-400 truncate">{label}</span>
+        <span className="font-orbitron text-white whitespace-nowrap">{pct.toFixed(1)}%</span>
+      </div>
+      <div className="w-full bg-gray-700/50 rounded-full h-2.5">
+        <div className={`${colorClass} h-2.5 rounded-full`} style={{ width: `${pct}%` }}></div>
+      </div>
     </div>
-    <div className="w-full bg-gray-700/50 rounded-full h-2.5">
-      <div className={`${colorClass} h-2.5 rounded-full`} style={{ width: `${value}%` }}></div>
-    </div>
-  </div>
-);
+  );
+};
 
 const RoverStatus: React.FC<{ rover: Rover }> = ({ rover }) => {
   const statusColor = {
