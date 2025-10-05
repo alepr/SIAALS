@@ -14,16 +14,31 @@ const RoverMarker: React.FC<{ rover: Rover; index: number }> = ({ rover, index }
     }[rover.status];
 
     const statusPulse = rover.status !== 'desconectado' ? 'animate-pulse' : '';
-    const x = 50 + (rover.location[0] / 300) * 400;
-    const y = 50 + (rover.location[1] / 200) * 300;
-    
-    return (
-        <g transform={`translate(${x}, ${y})`}>
-            <circle cx="0" cy="0" r="12" className={`${statusColor} opacity-20 ${statusPulse}`} />
-            <circle cx="0" cy="0" r="6" className={statusColor} />
-            <text x="10" y="4" className="fill-white text-[10px] font-sans">R-{index+1}</text>
-        </g>
-    )
+  // Mapear coordenadas del modelo (-MAX..MAX) a la vista SVG (0..500, 0..400)
+  const MAX_X = 50; // debe coincidir con App.tsx MAX_DISTANCE
+  const MAX_Y = 50;
+  const viewW = 500;
+  const viewH = 400;
+
+  const normalizedX = ((rover.location[0] + MAX_X) / (MAX_X * 2));
+  const normalizedY = ((rover.location[1] + MAX_Y) / (MAX_Y * 2));
+
+  const x = Math.round(normalizedX * viewW);
+  const y = Math.round(normalizedY * viewH);
+
+  // Aplicar transición para suavizar transform en SVG
+  const groupStyle: React.CSSProperties = {
+    transition: 'transform 160ms linear',
+    WebkitTransition: 'transform 160ms linear'
+  };
+
+  return (
+    <g transform={`translate(${x}, ${y})`} style={groupStyle}>
+      <circle cx="0" cy="0" r="12" className={`${statusColor} opacity-20 ${statusPulse}`} />
+      <circle cx="0" cy="0" r="6" className={statusColor} />
+      <text x="10" y="4" className="fill-white text-[10px] font-sans">R-{index+1}</text>
+    </g>
+  )
 }
 
 const AtacamaBackground: React.FC = () => (
@@ -71,7 +86,7 @@ const LunarSurface: React.FC<LunarSurfaceProps> = ({ rovers }) => {
         {/* Lander and Tower */}
         <g transform="translate(250, 200)">
           <rect x="-15" y="-15" width="30" height="30" fill="#b0c4de" stroke="#fff" strokeWidth="0.5" />
-          <text x="20" y="5" className="fill-white text-[12px] font-sans">Aterrizador</text>
+          <text x="20" y="5" className="fill-white text-[12px] font-sans">Modulo Lunar</text>
           <path d="M 0 -20 L 0 -50" stroke="#00ff88" strokeWidth="2" filter="url(#glow)" />
           <path d="M 0 -50 L 10 -40 M 0 -50 L -10 -40" stroke="#00ff88" strokeWidth="2" />
         </g>
