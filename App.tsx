@@ -121,10 +121,13 @@ const App: React.FC = () => {
         });
 
         // Mission & Crew Simulation
-        newData.mission.day += 0.01;
+        newData.mission.day += 0.01; // Advance mission day
         
         let totalProductivity = 0;
         let highStressIncidents = 0;
+
+
+        //Crew Simulation
 
         newData.crew = newData.crew.map(member => {
             const updatedMember = updateCrewMember(member, isCurrentlyNight, newData.habitat.co2);
@@ -135,6 +138,7 @@ const App: React.FC = () => {
             return updatedMember;
         });
         
+        //Calculations from Crew
         newData.mission.productivity = totalProductivity / newData.crew.length;
         newData.mission.incidents += highStressIncidents;
 
@@ -171,6 +175,7 @@ const App: React.FC = () => {
 
       <div className="md:col-start-2 md:row-start-2">
         <main className="col-span-1 flex flex-col gap-4 overflow-hidden min-h-0">
+          {/* Visual updates for lunar surface and Atacama environment would be best applied within the LunarSurface component */}
           <LunarSurface rovers={data.rovers} />
           <MissionStatusTabs mission={data.mission} crew={data.crew} />
         </main>
