@@ -9,6 +9,8 @@ export interface Energy {
   solarOutput: number;
   batteryLevel: number;
   nightTime: boolean;
+  // iluminación continua: 0 = noche, 1 = día
+  illumination?: number;
 }
 
 export interface Communications {
@@ -29,6 +31,8 @@ export interface Rover {
   id: number;
   status: 'activo' | 'muestreando' | 'en espera' | 'desconectado';
   location: [number, number];
+  // optional movement target (used by simulation)
+  target?: [number, number];
   battery: number;
 }
 

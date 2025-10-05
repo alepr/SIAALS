@@ -32,11 +32,13 @@ const createInitialCrew = (): CrewMember[] => {
 export const INITIAL_MVP_DATA: MvpData = {
   lander: { status: "en línea", temp: -180, power: 200, precision: 100 },
   energy: { solarOutput: 1600, batteryLevel: 85, nightTime: false },
+  // 1.0 = día, 0.0 = noche
+  // (se añadirá en runtime si falta)
   communications: { status: "en línea", signalStrength: 92, bandwidth: 10, earthLink: true },
   thermal: { status: "en línea", heating: 75, temp: -40, insulation: "optimal" },
   rovers: [
-    { id: 1, status: "activo", location: [100, 50], battery: 78 },
-    { id: 2, status: "muestreando", location: [200, 120], battery: 82 }
+    { id: 1, status: "activo", location: [20, 10], battery: 78 },
+    { id: 2, status: "muestreando", location: [-10, -5], battery: 82 }
   ],
   mission: { 
     phase: 2, 

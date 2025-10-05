@@ -9,8 +9,8 @@ interface MetricCardProps {
 }
 
 const MetricCard: React.FC<MetricCardProps> = ({ label, value, icon }) => (
-    <div className="bg-gray-800/50 p-3 rounded-lg flex items-center gap-3 border border-gray-700/50 overflow-hidden">
-        <div className="p-2 bg-tech-green/20 rounded-lg text-tech-green flex-shrink-0">
+    <div className="bg-gray-800/50 p-3 rounded-lg flex items-center gap-3 border border-gray-700/50 overflow-hidden h-20">
+        <div className="w-10 h-10 flex items-center justify-center bg-tech-green/20 rounded-lg text-tech-green flex-shrink-0">
             {icon}
         </div>
         <div className="flex-1 min-w-0">
@@ -49,7 +49,7 @@ const ExecutiveDashboard: React.FC<{ mission: Mission; crew: CrewMember[] }> = (
   return (
     <div className="bg-[#101626]/80 backdrop-blur-sm rounded-lg border border-gray-700/50 p-4 flex flex-col gap-4">
       <h2 className="font-orbitron text-xl text-solar-blue">Panel Ejecutivo</h2>
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
         <MetricCard label="ROI Proyectado" value={`${mission.roi}%`} icon={<ChartBarIcon className="w-6 h-6"/>} />
         <MetricCard label="Productividad" value={`${mission.productivity.toFixed(0)}%`} icon={<BriefcaseIcon className="w-6 h-6"/>} />
         <MetricCard label="Día de Misión" value={mission.day.toFixed(0)} icon={<CalendarIcon className="w-6 h-6"/>} />

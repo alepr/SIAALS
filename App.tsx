@@ -23,6 +23,8 @@ const App: React.FC = () => {
   const [data, setData] = useState<MvpData>(INITIAL_MVP_DATA);
   // displayData se usará para mostrar valores suavizados en la UI
   const [displayData, setDisplayData] = useState<MvpData>(INITIAL_MVP_DATA);
+  // objetivo objetivoIllum (0..1) para día/noche; la UI se suaviza hacia data.energy.illumination
+  const targetIllumRef = useRef<number>(1);
   const [isNight, setIsNight] = useState<boolean>(false);
   const rafRef = useRef<number | null>(null);
 
@@ -47,6 +49,20 @@ const App: React.FC = () => {
     // Thermal
     out.thermal.temp = lerp(from.thermal.temp, to.thermal.temp, t);
     out.thermal.heating = lerp(from.thermal.heating, to.thermal.heating, t);
+
+  // Lander fields
+  out.lander.temp = lerp(from.lander.temp, to.lander.temp, t);
+  out.lander.power = lerp(from.lander.power, to.lander.power, t);
+  out.lander.status = to.lander.status;
+
+  // Communications
+  out.communications.signalStrength = lerp(from.communications.signalStrength, to.communications.signalStrength, t);
+  out.communications.status = to.communications.status;
+
+  // Iluminación (0..1)
+  if (typeof from.energy.illumination === 'undefined') from.energy.illumination = 1;
+  if (typeof to.energy.illumination === 'undefined') to.energy.illumination = to.energy.nightTime ? 0 : 1;
+  out.energy.illumination = lerp(from.energy.illumination, to.energy.illumination, t);
 
     // Rovers: posiciones y batería suavizadas
     out.rovers = from.rovers.map((r, i) => {
@@ -81,6 +97,9 @@ const App: React.FC = () => {
 
     return out;
   }
+  // Parámetros configurables para suavizado (ajustables)
+  const DISPLAY_LERP_T = 0.06; // menor = más suave
+  const ROVER_MAX_STEP = 0.7; // paso máximo por tick para rovers (menor = más lento)
   const [componentStatus, setComponentStatus] = useState({
       lander: true,
       communications: true,
@@ -141,9 +160,11 @@ const App: React.FC = () => {
       setData(prevData => {
         const newData: MvpData = JSON.parse(JSON.stringify(prevData));
 
-        const isCurrentlyNight = newData.energy.nightTime;
+  // Asegurar campo illumination
+  if (typeof newData.energy.illumination === 'undefined') newData.energy.illumination = newData.energy.nightTime ? 0 : 1;
+  const isCurrentlyNight = newData.energy.nightTime;
 
-        // Habitat Simulation
+  // Habitat Simulation
         const co2Change = isCurrentlyNight ? -20 : 30; // Accumulates during day, scrubs at night
         newData.habitat.co2 += co2Change * Math.random();
         newData.habitat.co2 = Math.max(600, Math.min(1800, newData.habitat.co2));
@@ -162,6 +183,18 @@ const App: React.FC = () => {
         }
         newData.energy.batteryLevel = Math.max(0, Math.min(100, newData.energy.batteryLevel));
         newData.thermal.temp = isCurrentlyNight ? -200 + newData.thermal.heating * 2.1 : 120 - (40 - newData.thermal.heating)*2;
+
+        // Suavizar iluminación del día/noche hacia el objetivo (targetIllumRef)
+        const illumTarget = targetIllumRef.current;
+        const I_STEP = 0.02; // cuánto cambia por tick (ajusta para más/menos paulatino)
+        if (Math.abs(newData.energy.illumination - illumTarget) > I_STEP) {
+          newData.energy.illumination += (newData.energy.illumination < illumTarget ? I_STEP : -I_STEP);
+        } else {
+          newData.energy.illumination = illumTarget;
+        }
+
+        // Ajustar nightTime booleano basado en illumination umbral para compatibilidad
+        newData.energy.nightTime = newData.energy.illumination < 0.5;
 
         newData.lander.status = componentStatus.lander ? 'en línea' : 'desconectado';
         newData.communications.status = componentStatus.communications ? 'en línea' : 'desconectado';
@@ -191,8 +224,8 @@ const App: React.FC = () => {
         const dx = roverAny.target[0] - rover.location[0];
         const dy = roverAny.target[1] - rover.location[1];
         const distance = Math.sqrt(dx*dx + dy*dy) || 0.0001;
-        const MAX_STEP = 1.2; // paso máximo por tick
-        const step = Math.min(MAX_STEP, distance);
+                const MAX_STEP = ROVER_MAX_STEP; // paso máximo por tick
+                const step = Math.min(MAX_STEP, distance);
         rover.location[0] += (dx / distance) * step;
         rover.location[1] += (dy / distance) * step;
 
@@ -240,8 +273,8 @@ const App: React.FC = () => {
   useEffect(() => {
     const tick = () => {
       setDisplayData(prev => {
-        // t pequeño para suavizar (0.08 => transición lenta)
-        const t = 0.12;
+        // t pequeño para suavizar
+        const t = DISPLAY_LERP_T;
         const sm = smoothTowards(prev, data, t);
         return sm;
       });
@@ -256,10 +289,8 @@ const App: React.FC = () => {
    useEffect(() => {
     const dayNightInterval = setInterval(() => {
       setIsNight(prev => !prev);
-      setData(prevData => ({
-        ...prevData,
-        energy: { ...prevData.energy, nightTime: !prevData.energy.nightTime }
-      }));
+      // Toggle target illumination (0 = night, 1 = day). La simulación nudgeará la iluminación gradualmente.
+      targetIllumRef.current = targetIllumRef.current < 0.5 ? 1 : 0;
     }, (LUNAR_DAY_DURATION_MS / 2) / SIMULATION_SPEED_FACTOR);
     
     return () => clearInterval(dayNightInterval);
@@ -280,13 +311,13 @@ const App: React.FC = () => {
       <div className="md:col-start-2 md:row-start-2">
         <main className="col-span-1 flex flex-col gap-4 overflow-hidden min-h-0">
           {/* Visual updates for lunar surface and Atacama environment would be best applied within the LunarSurface component */}
-          <LunarSurface rovers={displayData.rovers} />
-          <MissionStatusTabs mission={data.mission} crew={data.crew} />
+          <LunarSurface rovers={displayData.rovers} illumination={displayData.energy.illumination ?? 1} />
+          <MissionStatusTabs mission={displayData.mission} crew={displayData.crew} />
         </main>
       </div>
 
       <div className="md:col-start-3 md:row-start-2">
-        <TelemetryPanel data={data} />
+        <TelemetryPanel data={displayData} />
       </div>
     </div>
   );
