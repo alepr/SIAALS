@@ -1,0 +1,5 @@
+{
+  "name": "SIAALS - Panel de Control de Misión",
+  "description": "Una aplicación web interactiva que muestra el proyecto SIAALS (Sistema Inteligente Andino de Asentamiento Lunar Sostenible). Este panel proporciona controles de sistema, telemetría en tiempo real y resúmenes ejecutivos del rendimiento de la misión.",
+  "requestFramePermissions": []
+}
