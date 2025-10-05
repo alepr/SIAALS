@@ -158,18 +158,27 @@ const App: React.FC = () => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#0a0e1a] text-gray-200 grid grid-rows-[auto_1fr] grid-cols-[300px_1fr_350px] gap-4 p-4">
+    <div className="min-h-screen bg-[#0a0e1a] text-gray-200 grid grid-rows-[auto_1fr] grid-cols-1 md:grid-cols-[300px_1fr_350px] gap-4 p-4">
       <Header />
-      <ControlPanel 
-        componentStatus={componentStatus} 
-        onToggle={handleToggleComponent} 
-        isNight={isNight}
-      />
-      <main className="col-span-1 flex flex-col gap-4 overflow-hidden">
-        <LunarSurface rovers={data.rovers} />
-        <MissionStatusTabs mission={data.mission} crew={data.crew} />
-      </main>
-      <TelemetryPanel data={data} />
+
+      <div className="md:col-start-1 md:row-start-2">
+        <ControlPanel 
+          componentStatus={componentStatus} 
+          onToggle={handleToggleComponent} 
+          isNight={isNight}
+        />
+      </div>
+
+      <div className="md:col-start-2 md:row-start-2">
+        <main className="col-span-1 flex flex-col gap-4 overflow-hidden min-h-0">
+          <LunarSurface rovers={data.rovers} />
+          <MissionStatusTabs mission={data.mission} crew={data.crew} />
+        </main>
+      </div>
+
+      <div className="md:col-start-3 md:row-start-2">
+        <TelemetryPanel data={data} />
+      </div>
     </div>
   );
 };
