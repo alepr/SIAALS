@@ -37,7 +37,12 @@ const RoverStatus: React.FC<{ rover: Rover }> = ({ rover }) => {
           <span className="text-gray-400 truncate">Estado</span>
           <span className={`${statusColor} font-bold ml-2 truncate`}>{rover.status.toUpperCase()}</span>
         </div>
-        <ProgressBar label="Batería" value={rover.battery} colorClass="bg-red-500" />
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex-1">
+            <ProgressBar label="Batería" value={rover.battery} colorClass="bg-tech-green" />
+          </div>
+          <div className="w-16 text-right font-orbitron">{Number.isFinite(rover.battery) ? `${rover.battery.toFixed(0)}%` : '0%'}</div>
+        </div>
         <div className="flex justify-between items-center min-w-0">
           <span className="text-green-400 truncate">Ubicación</span>
           <span className="font-orbitron text-white truncate max-w-[8rem] sm:max-w-[12rem]">{rover.location[0].toFixed(0)}, {rover.location[1].toFixed(0)}</span>
