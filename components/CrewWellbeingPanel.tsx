@@ -50,8 +50,8 @@ const CrewMemberCard: React.FC<{ member: CrewMember }> = ({ member }) => {
         </span>
       </div>
       <div className="space-y-2">
-        <CrewProgressBar label="Bienestar" value={member.wellnessScore} colorClass="bg-solar-blue" />
-        <CrewProgressBar label="Productividad" value={member.productivityScore} colorClass="bg-tech-green" />
+        <CrewProgressBar label="Bienestar" value={member.wellnessScore} colorClass="bg-blue-500" />
+        <CrewProgressBar label="Productividad" value={member.productivityScore} colorClass="bg-green-500 " />
         <CrewProgressBar label="Rend. Cognitivo" value={member.cognitive.performance} colorClass="bg-purple-500" />
       </div>
       <div className="grid grid-cols-2 gap-2 mt-1">

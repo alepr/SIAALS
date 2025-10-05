@@ -49,7 +49,7 @@ const ExecutiveDashboard: React.FC<{ mission: Mission; crew: CrewMember[] }> = (
   return (
     <div className="bg-[#101626]/80 backdrop-blur-sm rounded-lg border border-gray-700/50 p-4 flex flex-col gap-4">
       <h2 className="font-orbitron text-xl text-solar-blue">Panel Ejecutivo</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <MetricCard label="ROI Proyectado" value={`${mission.roi}%`} icon={<ChartBarIcon className="w-6 h-6"/>} />
         <MetricCard label="Productividad" value={`${mission.productivity.toFixed(0)}%`} icon={<BriefcaseIcon className="w-6 h-6"/>} />
         <MetricCard label="Día de Misión" value={mission.day.toFixed(0)} icon={<CalendarIcon className="w-6 h-6"/>} />
