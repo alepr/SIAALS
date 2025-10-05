@@ -9,11 +9,11 @@ interface MetricCardProps {
 }
 
 const MetricCard: React.FC<MetricCardProps> = ({ label, value, icon }) => (
-    <div className="bg-gray-800/50 p-3 rounded-lg flex items-center gap-3 border border-gray-700/50 overflow-hidden h-20">
-        <div className="w-10 h-10 flex items-center justify-center bg-tech-green/20 rounded-lg text-tech-green flex-shrink-0">
+    <div className="bg-gray-800/50 p-3 rounded-lg flex flex-col items-center justify-center text-center gap-2 border border-gray-700/50 overflow-hidden h-24">
+        <div className="w-10 h-10 flex items-center justify-center bg-tech-green/20 rounded-lg text-tech-green">
             {icon}
         </div>
-        <div className="flex-1 min-w-0">
+        <div className="min-w-0">
             <div className="text-sm text-gray-400 truncate">{label}</div>
             <div className="text-2xl font-orbitron text-white">{value}</div>
         </div>
