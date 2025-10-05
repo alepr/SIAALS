@@ -1,0 +1,11 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Base body to ensure app visible */
+html, body, #root {
+  height: 100%;
+}
+
+/* Ensure overflow is handled */
+* { box-sizing: border-box; }
