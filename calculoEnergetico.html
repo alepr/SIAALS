@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Papaya Team — Mini Dashboard NASA · Selector de Entorno (Tierra/Luna/Deimos/Fobos)</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    :root { --bg:#0E1E38; --card:#132743; --line:#23395b; --ink:#F5F5F5; --muted:#a9bed9; --accent:#FF8800; }
+    *{box-sizing:border-box}
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 0; background:var(--bg); color:var(--ink); }
+    header { padding: 12px 16px; background:var(--card); border-bottom: 1px solid var(--line); display:flex; align-items:center; gap:12px;}
+    .logo { width:36px; height:36px; background:linear-gradient(140deg,var(--accent),#ffbd66); border-radius:10px; display:flex; align-items:center; justify-content:center; font-weight:700; color:var(--bg); }
+    h1 { font-size: 18px; margin: 0; }
+    .container { display:grid; grid-template-columns: 1fr; gap: 16px; padding:16px; }
+    @media(min-width: 1100px){ .container { grid-template-columns: 1.1fr 0.9fr; } }
+    .card { background:var(--card); border:1px solid var(--line); border-radius:14px; overflow:hidden; }
+    .card h2 { font-size:16px; margin:0; padding:10px 12px; background:#192f55; border-bottom:1px solid var(--line); }
+    .card .body { padding:12px; }
+    #map { height: 440px; }
+    .grid { display:grid; gap:12px; grid-template-columns: 1fr; }
+    @media(min-width:720px){ .grid { grid-template-columns: 1fr 1fr; } }
+    label { font-size: 12px; color:#cfe2ff; display:block; margin-bottom:6px; }
+    input, select { width:100%; padding:8px 10px; border-radius:10px; border:1px solid var(--line); background:var(--bg); color:#fff; }
+    .kpi { display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+    .badge { padding:4px 8px; border-radius:999px; font-weight:600; background:var(--bg); border:1px solid var(--line); }
+    .row { display:flex; flex-wrap:wrap; gap:8px; }
+    .muted { color:var(--muted); font-size:12px; }
+    a { color:#7ec8ff; }
+    .footer { text-align:center; font-size:12px; color:#9db7d6; padding:12px; }
+    button { padding:8px 12px; border-radius:10px; border:1px solid var(--line); background:var(--bg); color:#fff; cursor:pointer; }
+    canvas { width:100%; max-height:320px; }
+    .units { font-size:12px; color:#cfe2ff; margin-top:6px; }
+    .warn { color:#ffd27f; }
+    .debug { font-size:12px; color:#cfe2ff; margin-top:6px; }
+    .tag { display:inline-block; padding:2px 6px; border-radius:999px; border:1px solid var(--line); margin-right:6px; }
+    .inline { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+    .pill { background:#0E1E38; border:1px solid #23395b; border-radius:999px; padding:2px 8px; font-size:12px; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo">🍈</div>
+    <div>
+      <h1>Papaya Team — Mini Dashboard NASA</h1>
+      <div class="muted">Click en el mapa para mover el punto POWER · Centro inicial: Atacama (lat −23.5°, lon −69.5°)</div>
+    </div>
+  </header>
+
+  <div class="container">
+    <!-- MAPA GIBS -->
+    <section class="card">
+      <h2>Mapa (GIBS) — Capa True Color</h2>
+      <div class="body">
+        <div class="inline" style="margin-bottom:8px;">
+          <label for="gibsDate">Fecha (YYYY-MM-DD):</label>
+          <input id="gibsDate" type="date" />
+          <button id="btnUpdateLayer">Actualizar capa</button>
+          <span class="pill" id="coordView">lat −23.5, lon −69.5</span>
+        </div>
+        <div id="map"></div>
+        <p class="muted">Fuente: NASA GIBS WMTS. Usa fecha para cambiar el mosaico temporal. Click en el mapa: mueve el punto de cálculo para POWER.</p>
+      </div>
+    </section>
+
+    <!-- KPI + CHART POWER -->
+    <section class="card">
+      <h2>KPIs (POWER) — Punto seleccionado</h2>
+      <div class="body">
+        <div class="grid">
+          <div>
+            <div class="kpi">
+              <div class="badge">Autonomía Solar</div>
+              <div id="autonomiaVal" style="font-size:22px; font-weight:700;">—</div>
+              <div class="pill">η efectiva: <span id="etaEff">—</span></div>
+              <div class="pill">Entorno: <span id="envPill">Tierra</span></div>
+              <div class="pill">×irr: <span id="irrPill">1.00</span> · ×eclipse: <span id="eclPill">1.00</span></div>
+            </div>
+            <div class="muted" style="margin-top:6px;">
+              Autonomía = (kWh/m²/día × <strong>factor_entorno</strong> × área × η efectiva) / consumo
+            </div>
+            <div class="units" id="unitsInfo">Unidades radiación: —</div>
+            <div class="debug" id="powerDebug">Radiación (últ. válido): — · Media 7d: — · Fecha base: — · kWh ajustado: —</div>
+
+            <div class="grid" style="margin-top:10px;">
+              <div>
+                <label>Entorno</label>
+                <select id="envSelect">
+                  <option value="earth">Tierra (×irr 1.00, ×eclipse 1.00)</option>
+                  <option value="moon">Luna (×irr 1.00, ×eclipse 1.00)</option>
+                  <option value="deimos" selected>Deimos (×irr 0.43, ×eclipse 0.95)</option>
+                  <option value="phobos">Fobos (×irr 0.43, ×eclipse 0.90)</option>
+                </select>
+              </div>
+              <div>
+                <label>Tecnología FV</label>
+                <select id="techSelect">
+                  <option value="0.22" selected>Triple-junction (GaInP/GaAs/Ge) — 0.22</option>
+                  <option value="0.10">ISRU "moonglass" — 0.10</option>
+                  <option value="custom">Personalizado</option>
+                </select>
+              </div>
+              <div>
+                <label>Eficiencia base η (0–1)</label>
+                <input id="inpEffBase" type="number" value="0.22" step="0.01" inputmode="decimal" />
+              </div>
+              <div>
+                <label>Factor de luz f_luz</label>
+                <select id="selFLuz">
+                  <option value="0.50">Ecuador (~50%)</option>
+                  <option value="0.85" selected>Polar bueno (~85%)</option>
+                  <option value="0.90">Polar óptimo (~90%)</option>
+                </select>
+              </div>
+              <div>
+                <label>Factor polvo f_polvo (0–1)</label>
+                <input id="inpFPolvo" type="number" value="0.85" step="0.01" inputmode="decimal" />
+              </div>
+              <div>
+                <label>Factor ángulo f_θ (0–1)</label>
+                <input id="inpFTheta" type="number" value="0.85" step="0.01" inputmode="decimal" />
+              </div>
+            </div>
+
+            <div class="grid" style="margin-top:10px;">
+              <div>
+                <label>Área paneles (m²)</label>
+                <input id="inpArea" type="number" value="20" step="1" inputmode="decimal" />
+              </div>
+              <div>
+                <label>Consumo diario (kWh)</label>
+                <input id="inpConsumo" type="number" value="25" step="0.1" inputmode="decimal" />
+              </div>
+              <div style="display:flex; align-items:end; gap:8px;">
+                <button id="btnCalc">Recalcular</button>
+                <button id="btnCSV">Exportar CSV</button>
+              </div>
+            </div>
+
+            <div class="muted warn" id="warnMsg" style="margin-top:8px;"></div>
+          </div>
+
+          <div>
+            <canvas id="chartPower"></canvas>
+          </div>
+        </div>
+        <p class="muted">Datos: ALLSKY_SFC_SW_DWN (kWh/m²/día) y T2M (°C) — NASA POWER.</p>
+      </div>
+    </section>
+  </div>
+
+  <div class="footer">
+    Papaya Team · La Serena · NASA Space Apps — GIBS + POWER (demo 48h)
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    // --- Estado global ---
+    let lat = -23.5, lon = -69.5;
+    let chart, baseKwh=null, baseDate=null, lastSeries=null, powerUnits='kWh/m^2/day';
+
+    // --- Utilidades ---
+    const toISO = (d) => d.toISOString().split('T')[0];
+    function parseNum(x){ if(typeof x==='number') return x; if(typeof x!=='string') return NaN; return Number(x.replace(',', '.')); }
+
+    // --- MAPA (GIBS) ---
+    const map = L.map('map').setView([lat, lon], 7);
+    let currentDate = new Date(); currentDate.setDate(currentDate.getDate() - 15);
+    const dateInput = document.getElementById('gibsDate'); dateInput.value = toISO(currentDate);
+    let gibsLayer = null, marker = null;
+
+    function updateGIBSLayer(){
+      const dateStr = dateInput.value || toISO(currentDate);
+      const url = `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/MODIS_Terra_CorrectedReflectance_TrueColor/default/${dateStr}/GoogleMapsCompatible_Level9/{z}/{y}/{x}.jpg`;
+      if (gibsLayer) map.removeLayer(gibsLayer);
+      gibsLayer = L.tileLayer(url, { attribution:'Imagery © NASA GIBS', maxZoom:9 }).addTo(map);
+    }
+    updateGIBSLayer();
+    document.getElementById('btnUpdateLayer').addEventListener('click', updateGIBSLayer);
+
+    function setMarker(){
+      if (marker) map.removeLayer(marker);
+      marker = L.marker([lat, lon]).addTo(map).bindPopup(`Punto POWER<br>lat ${lat.toFixed(4)}, lon ${lon.toFixed(4)}`);
+      document.getElementById('coordView').textContent = `lat ${lat.toFixed(4)}, lon ${lon.toFixed(4)}`;
+    }
+    setMarker();
+
+    map.on('click', (e)=>{
+      lat = e.latlng.lat; lon = e.latlng.lng;
+      setMarker();
+      loadPOWER(); // recargar serie para el nuevo punto
+    });
+
+    // --- CHART ---
+    function drawChart(dates, kwh, t2m){
+      const ctx = document.getElementById('chartPower').getContext('2d');
+      if (chart) chart.destroy();
+      chart = new Chart(ctx, {
+        type:'line',
+        data:{ labels: dates, datasets:[
+          { label:'Radiación (kWh/m²/día)', data:kwh, yAxisID:'y1' },
+          { label:'Temperatura (°C)', data:t2m, yAxisID:'y2' }
+        ]},
+        options:{
+          responsive:true, interaction:{mode:'index', intersect:false},
+          scales:{
+            y1:{ type:'linear', position:'left', title:{display:true, text:'kWh/m²/día'} },
+            y2:{ type:'linear', position:'right', title:{display:true, text:'°C'}, grid:{drawOnChartArea:false} }
+          },
+          plugins:{ legend:{ labels:{ color:'#F5F5F5' } } }
+        }
+      });
+    }
+
+    // --- POWER API ---
+    async function loadPOWER(){
+      const end = new Date(), start = new Date(); start.setDate(end.getDate() - 30);
+      const fmt = (d) => d.toISOString().slice(0,10).replaceAll('-','');
+      const url = `https://power.larc.nasa.gov/api/temporal/daily/point?parameters=ALLSKY_SFC_SW_DWN,T2M&community=ag&latitude=${lat}&longitude=${lon}&start=${fmt(start)}&end=${fmt(end)}&format=JSON`;
+
+      const autonomiaEl = document.getElementById('autonomiaVal');
+      const powerDebug = document.getElementById('powerDebug');
+      const unitsInfo = document.getElementById('unitsInfo');
+      const warnMsg = document.getElementById('warnMsg');
+      autonomiaEl.textContent = '…';
+      warnMsg.textContent = '';
+      baseKwh = null; baseDate = null; lastSeries = null;
+
+      try{
+        const r = await fetch(url);
+        const data = await r.json();
+        powerUnits = data?.parameters?.ALLSKY_SFC_SW_DWN?.units ||
+                     data?.header?.parameters?.ALLSKY_SFC_SW_DWN?.units ||
+                     data?.properties?.parameter_units?.ALLSKY_SFC_SW_DWN || 'kWh/m^2/day';
+        unitsInfo.textContent = 'Unidades radiación: ' + powerUnits;
+
+        const solar = data?.properties?.parameter?.ALLSKY_SFC_SW_DWN || {};
+        const t2m   = data?.properties?.parameter?.T2M || {};
+        const dates = Object.keys(solar).sort();
+        if (!dates.length){
+          autonomiaEl.textContent = '—';
+          warnMsg.textContent = 'Sin datos POWER para el rango seleccionado.';
+          return;
+        }
+        const solarValsRaw = dates.map(d => parseNum(solar[d]));
+        const isMJ = (''+powerUnits).toUpperCase().includes('MJ');
+        const kwh = solarValsRaw.map(v => {
+          let val = Number.isFinite(v) ? v : NaN;
+          if (isMJ && Number.isFinite(val)) val = val / 3.6;
+          return (Number.isFinite(val) && val >= 0) ? val : NaN;
+        });
+        const temp = dates.map(d => {
+          const v = parseNum(t2m[d]);
+          return Number.isFinite(v) ? v : null;
+        });
+        drawChart(dates, kwh.map(v => Number.isFinite(v)?v:0), temp);
+
+        // último índice con kwh>0
+        let lastIdx = -1;
+        for (let i = kwh.length-1; i>=0; i--){
+          if (Number.isFinite(kwh[i]) && kwh[i] > 0){ lastIdx = i; break; }
+        }
+        if (lastIdx === -1){
+          autonomiaEl.textContent = '—';
+          powerDebug.textContent = 'Radiación (últ. válido): — · Media 7d: — · Fecha base: — · kWh ajustado: —';
+          warnMsg.textContent = 'No hay valores positivos de radiación en los últimos 30 días (prueba otro punto/fecha).';
+          lastSeries = {dates, kwh, temp};
+          return;
+        }
+        const startIdx = Math.max(0, lastIdx - 6);
+        const windowVals = kwh.slice(startIdx, lastIdx + 1).filter(v => Number.isFinite(v) && v > 0);
+        const avg7 = windowVals.length ? (windowVals.reduce((a,b)=>a+b,0) / windowVals.length) : kwh[lastIdx];
+
+        baseKwh = avg7;
+        baseDate = dates[lastIdx];
+        powerDebug.innerHTML = `Radiación (últ. válido): <span class="tag">${kwh[lastIdx].toFixed(2)} kWh/m²/d</span> · Media 7d: <span class="tag">${avg7.toFixed(2)} kWh/m²/d</span> · Fecha base: <span class="tag">${baseDate}</span> · kWh ajustado: <span class="tag" id="kwhAdjTag">—</span>`;
+        lastSeries = {dates, kwh, temp};
+        recalcAutonomia();
+      }catch(e){
+        console.error(e);
+        autonomiaEl.textContent = '—';
+        warnMsg.textContent = 'No se pudieron cargar los datos de POWER.';
+      }
+    }
+
+    // --- Eficiencias y entorno ---
+    const inpEffBase = document.getElementById('inpEffBase');
+    const techSelect = document.getElementById('techSelect');
+    const selFLuz = document.getElementById('selFLuz');
+    const inpFPolvo = document.getElementById('inpFPolvo');
+    const inpFTheta = document.getElementById('inpFTheta');
+    const inpArea = document.getElementById('inpArea');
+    const inpConsumo = document.getElementById('inpConsumo');
+    const etaEffEl = document.getElementById('etaEff');
+    const envSelect = document.getElementById('envSelect');
+    const envPill = document.getElementById('envPill');
+    const irrPill = document.getElementById('irrPill');
+    const eclPill = document.getElementById('eclPill');
+
+    function getEtaBase(){
+      const t = techSelect.value;
+      if (t === 'custom'){
+        return parseNum(inpEffBase.value);
+      } else {
+        const v = parseNum(t);
+        inpEffBase.value = v.toFixed(2);
+        return v;
+      }
+    }
+    function getEnvFactors(){
+      switch(envSelect.value){
+        case 'earth': return {name:'Tierra', irr:1.00, ecl:1.00};
+        case 'moon':  return {name:'Luna', irr:1.00, ecl:1.00}; // f_luz ya se modela en η efectiva
+        case 'deimos':return {name:'Deimos',irr:0.43, ecl:0.95};
+        case 'phobos':return {name:'Fobos', irr:0.43, ecl:0.90};
+        default:      return {name:'Tierra', irr:1.00, ecl:1.00};
+      }
+    }
+    function etaEfectiva(){
+      const eta = getEtaBase();
+      const fL = parseNum(selFLuz.value);
+      const fP = parseNum(inpFPolvo.value);
+      const fT = parseNum(inpFTheta.value);
+      if (![eta,fL,fP,fT].every(x=>Number.isFinite(x) && x>0)) return NaN;
+      return eta * fL * fP * fT;
+    }
+    techSelect.addEventListener('change', ()=>{
+      inpEffBase.disabled = (techSelect.value !== 'custom');
+      recalcAutonomia();
+    });
+    envSelect.addEventListener('change', recalcAutonomia);
+
+    function recalcAutonomia(){
+      const warnMsg = document.getElementById('warnMsg');
+      const autonomiaEl = document.getElementById('autonomiaVal');
+      const kwhAdjTag = document.getElementById('kwhAdjTag');
+      warnMsg.textContent = '';
+      if (!Number.isFinite(baseKwh) || baseKwh <= 0){ autonomiaEl.textContent='—'; etaEffEl.textContent='—'; if(kwhAdjTag)kwhAdjTag.textContent='—'; return; }
+
+      const area = parseNum(inpArea.value);
+      const cons = parseNum(inpConsumo.value);
+      const etaEff = etaEfectiva();
+      const env = getEnvFactors();
+      envPill.textContent = env.name;
+      irrPill.textContent = env.irr.toFixed(2);
+      eclPill.textContent = env.ecl.toFixed(2);
+      etaEffEl.textContent = Number.isFinite(etaEff) ? (etaEff*100).toFixed(1) + '%' : '—';
+
+      if (!Number.isFinite(area) || area<=0){ autonomiaEl.textContent='—'; warnMsg.textContent='Área inválida.'; return; }
+      if (!Number.isFinite(etaEff) || etaEff<=0 || etaEff>1){ autonomiaEl.textContent='—'; warnMsg.textContent='η efectiva fuera de rango (0–1).'; return; }
+      if (!Number.isFinite(cons) || cons<=0){ autonomiaEl.textContent='—'; warnMsg.textContent='Consumo debe ser > 0.'; return; }
+
+      // kWh ajustado por entorno (irradiancia y eclipses de la luna/órbita)
+      const kwhAdj = baseKwh * env.irr * env.ecl;
+      if (kwhAdjTag) kwhAdjTag.textContent = kwhAdj.toFixed(2) + ' kWh/m²/d';
+
+      const gen = kwhAdj * area * etaEff; // kWh/día
+      const pct = Math.max(0, Math.min(999, (gen / cons) * 100));
+      autonomiaEl.textContent = pct.toFixed(0) + '%';
+    }
+
+    [inpEffBase, selFLuz, inpFPolvo, inpFTheta, inpArea, inpConsumo].forEach(el => el.addEventListener('input', recalcAutonomia));
+    document.getElementById('btnCalc').addEventListener('click', recalcAutonomia);
+
+    // --- Export CSV ---
+    document.getElementById('btnCSV').addEventListener('click', ()=>{
+      if (!lastSeries){ alert('No hay serie POWER cargada.'); return; }
+      const area = parseNum(inpArea.value);
+      const etaEff = etaEfectiva();
+      const env = getEnvFactors();
+      const rows = [];
+      rows.push(['meta','lat',lat], ['meta','lon',lon], ['meta','units', powerUnits], ['meta','eta_eff', etaEff], ['meta','area_m2', area],
+                ['meta','env', env.name], ['meta','irr_factor', env.irr], ['meta','eclipse_factor', env.ecl]);
+      rows.push(['date','kwh_m2_day_raw','kwh_m2_day_adj','t2m_C','gen_kwh_day']);
+      for (let i=0;i<lastSeries.dates.length;i++){
+        const d = lastSeries.dates[i];
+        const v = lastSeries.kwh[i];
+        const t = lastSeries.temp[i];
+        const kwhRaw = Number.isFinite(v) ? v : 0;
+        const kwhAdj = kwhRaw * env.irr * env.ecl;
+        const gen = (Number.isFinite(etaEff) && Number.isFinite(area) && kwhAdj>0) ? (kwhAdj * area * etaEff) : '';
+        rows.push([d, kwhRaw.toFixed(3), kwhAdj.toFixed(3), (t==null?'':t.toFixed(2)), gen===''?'':gen.toFixed(3)]);
+      }
+      const csv = rows.map(r => r.join(',')).join('\n');
+      const blob = new Blob([csv], {type:'text/csv'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'power_timeseries_env.csv';
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+    });
+
+    // --- Init ---
+    loadPOWER();
+  </script>
+</body>
+</html>

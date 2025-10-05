@@ -2,17 +2,21 @@ import React from 'react';
 import type { CrewMember, StressLevel } from '../types';
 import { HeartIcon, BrainIcon, AlertTriangleIcon } from './Icons';
 
-const CrewProgressBar: React.FC<{ label: string; value: number; colorClass: string }> = ({ label, value, colorClass }) => (
-  <div>
-    <div className="flex justify-between text-xs mb-1">
-      <span className="text-gray-400">{label}</span>
-      <span className="font-orbitron text-white">{value.toFixed(0)}%</span>
+const CrewProgressBar: React.FC<{ label: string; value: number; colorClass: string }> = ({ label, value, colorClass }) => {
+  const v = Number.isFinite(value) ? value : 0;
+  const pct = Math.max(0, Math.min(100, v));
+  return (
+    <div>
+      <div className="flex justify-between text-xs mb-1">
+        <span className="text-gray-400">{label}</span>
+        <span className="font-orbitron text-white">{pct.toFixed(0)}%</span>
+      </div>
+      <div className="w-full bg-gray-700/50 rounded-full h-1.5">
+        <div className={`${colorClass} h-1.5 rounded-full`} style={{ width: `${pct}%` }}></div>
+      </div>
     </div>
-    <div className="w-full bg-gray-700/50 rounded-full h-1.5">
-      <div className={`${colorClass} h-1.5 rounded-full`} style={{ width: `${value}%` }}></div>
-    </div>
-  </div>
-);
+  );
+};
 
 const BiometricStat: React.FC<{ icon: React.ReactNode, value: string, unit: string }> = ({ icon, value, unit }) => (
     <div className="flex items-center space-x-2 bg-gray-900/50 p-2 rounded-md">
@@ -46,8 +50,8 @@ const CrewMemberCard: React.FC<{ member: CrewMember }> = ({ member }) => {
         </span>
       </div>
       <div className="space-y-2">
-        <CrewProgressBar label="Bienestar" value={member.wellnessScore} colorClass="bg-solar-blue" />
-        <CrewProgressBar label="Productividad" value={member.productivityScore} colorClass="bg-tech-green" />
+        <CrewProgressBar label="Bienestar" value={member.wellnessScore} colorClass="bg-blue-500" />
+        <CrewProgressBar label="Productividad" value={member.productivityScore} colorClass="bg-green-500 " />
         <CrewProgressBar label="Rend. Cognitivo" value={member.cognitive.performance} colorClass="bg-purple-500" />
       </div>
       <div className="grid grid-cols-2 gap-2 mt-1">

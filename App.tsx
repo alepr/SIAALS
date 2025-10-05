@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import type { MvpData, ComponentKey, Rover, CrewMember } from './types';
 import { INITIAL_MVP_DATA, TELEMETRY_UPDATE_INTERVAL_MS, LUNAR_DAY_DURATION_MS, SIMULATION_SPEED_FACTOR } from './constants';
 import ControlPanel from './components/ControlPanel';
 import TelemetryPanel from './components/TelemetryPanel';
+import Carousel from './components/Carousel';
 import LunarSurface from './components/LunarSurface';
 import MissionStatusTabs from './components/MissionStatusTabs';
 
@@ -21,66 +22,7 @@ const Header: React.FC = () => (
 
 const App: React.FC = () => {
   const [data, setData] = useState<MvpData>(INITIAL_MVP_DATA);
-  // displayData se usará para mostrar valores suavizados en la UI
-  const [displayData, setDisplayData] = useState<MvpData>(INITIAL_MVP_DATA);
   const [isNight, setIsNight] = useState<boolean>(false);
-  const rafRef = useRef<number | null>(null);
-
-  // util: interpolación lineal simple
-  const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
-
-  // util: interpola arrays [x,y]
-  const lerpPos = (a: number[], b: number[], t: number) => [lerp(a[0], b[0], t), lerp(a[1], b[1], t)];
-
-  // Deep lerp para los campos que queremos suavizar en displayData
-  const smoothTowards = (from: MvpData, to: MvpData, t: number): MvpData => {
-    const out: MvpData = JSON.parse(JSON.stringify(from));
-
-    // Energía
-    out.energy.batteryLevel = lerp(from.energy.batteryLevel, to.energy.batteryLevel, t);
-    out.energy.solarOutput = lerp(from.energy.solarOutput, to.energy.solarOutput, t);
-    out.energy.nightTime = to.energy.nightTime; // boolean, no lerp
-
-    // Habitat
-    out.habitat.co2 = lerp(from.habitat.co2, to.habitat.co2, t);
-
-    // Thermal
-    out.thermal.temp = lerp(from.thermal.temp, to.thermal.temp, t);
-    out.thermal.heating = lerp(from.thermal.heating, to.thermal.heating, t);
-
-    // Rovers: posiciones y batería suavizadas
-    out.rovers = from.rovers.map((r, i) => {
-      const target = to.rovers[i];
-      return {
-        ...r,
-        location: lerpPos(r.location, target.location, t) as [number, number],
-        battery: lerp(r.battery, target.battery, t),
-        status: target.status
-      } as any;
-    }) as [any, any];
-
-    // Crew: suavizar biometrics y scores
-    out.crew = from.crew.map((c, i) => {
-      const tgt = to.crew[i];
-      const copy = { ...c } as any;
-      copy.stressScore = lerp(c.stressScore, tgt.stressScore, t);
-      copy.productivityScore = lerp(c.productivityScore, tgt.productivityScore, t);
-      copy.biometrics.activityLevel = lerp(c.biometrics.activityLevel, tgt.biometrics.activityLevel, t);
-      copy.biometrics.heartRate = lerp(c.biometrics.heartRate, tgt.biometrics.heartRate, t);
-      copy.biometrics.hrv = lerp(c.biometrics.hrv, tgt.biometrics.hrv, t);
-      copy.biometrics.spo2 = lerp(c.biometrics.spo2, tgt.biometrics.spo2, t);
-      copy.wellnessScore = lerp(c.wellnessScore, tgt.wellnessScore, t);
-      // Mantener niveles/categorías basadas en target
-      copy.stressLevel = tgt.stressLevel;
-      return copy as any;
-    }) as any;
-
-    // Mission
-    out.mission.day = lerp(from.mission.day, to.mission.day, t);
-    out.mission.productivity = lerp(from.mission.productivity, to.mission.productivity, t);
-
-    return out;
-  }
   const [componentStatus, setComponentStatus] = useState({
       lander: true,
       communications: true,
@@ -88,6 +30,16 @@ const App: React.FC = () => {
       rover1: true,
       rover2: true
   });
+
+  const [carouselOpen, setCarouselOpen] = useState(false);
+  const [carouselIndex, setCarouselIndex] = useState(0);
+  const carouselImages = [
+    '/images/plan-1.svg',
+    '/images/plan-2.svg',
+    '/images/plan-3.svg',
+    '/images/plan-4.svg',
+    '/images/plan-5.svg'
+  ];
 
   const handleToggleComponent = useCallback((key: ComponentKey) => {
       setComponentStatus(prev => ({ ...prev, [key]: !prev[key] }));
@@ -167,54 +119,23 @@ const App: React.FC = () => {
         newData.communications.status = componentStatus.communications ? 'en línea' : 'desconectado';
         newData.thermal.status = componentStatus.thermal ? 'en línea' : 'desconectado';
         
-    // Roaming logic: cada rover tiene un objetivo (target) hacia el que se mueve con velocidad limitada.
-    newData.rovers.forEach((rover, index) => {
-      const key = `rover${index + 1}` as ComponentKey;
-      // Introducimos campos target para que el rover no salte a coordenadas aleatorias
-      if (!('target' in (rover as any))) {
-        (rover as any).target = [...rover.location];
-      }
-
-      const roverAny = rover as any;
-      // Si el componente está activo y hay batería, elegimos ocasionalmente un nuevo objetivo cercano
-      if (componentStatus[key] && rover.battery > 10) {
-        rover.battery -= 0.05; // consumo por tick
-
-        // Chance pequeña de elegir un nuevo target para variar la ruta
-        if (Math.random() < 0.08) {
-          const SPAWN_RADIUS = 30;
-          roverAny.target[0] = rover.location[0] + (Math.random() - 0.5) * SPAWN_RADIUS;
-          roverAny.target[1] = rover.location[1] + (Math.random() - 0.5) * SPAWN_RADIUS;
-        }
-
-        // Interpolamos la posición hacia el target con velocidad máxima
-        const dx = roverAny.target[0] - rover.location[0];
-        const dy = roverAny.target[1] - rover.location[1];
-        const distance = Math.sqrt(dx*dx + dy*dy) || 0.0001;
-        const MAX_STEP = 1.2; // paso máximo por tick
-        const step = Math.min(MAX_STEP, distance);
-        rover.location[0] += (dx / distance) * step;
-        rover.location[1] += (dy / distance) * step;
-
-        rover.status = rover.battery > 50 ? (Math.random() > 0.5 ? 'activo' : 'muestreando') : 'en espera';
-
-        // Mantener dentro de límites
-        const MAX_DISTANCE = 50; // Define maximum allowed distance
-        rover.location[0] = Math.max(-MAX_DISTANCE, Math.min(MAX_DISTANCE, rover.location[0]));
-        rover.location[1] = Math.max(-MAX_DISTANCE, Math.min(MAX_DISTANCE, rover.location[1]));
-      } else {
-        rover.status = 'desconectado';
-      }
-    });
+        newData.rovers.forEach((rover, index) => {
+            const key = `rover${index + 1}` as ComponentKey;
+            if (componentStatus[key] && rover.battery > 10) {
+                rover.battery -= 0.05;
+                rover.location[0] += (Math.random() - 0.5) * 2;
+                rover.location[1] += (Math.random() - 0.5) * 2;
+                rover.status = rover.battery > 50 ? (Math.random() > 0.5 ? 'activo' : 'muestreando') : 'en espera';
+            } else {
+                rover.status = 'desconectado';
+            }
+        });
 
         // Mission & Crew Simulation
-        newData.mission.day += 0.01; // Advance mission day
+        newData.mission.day += 0.01;
         
         let totalProductivity = 0;
         let highStressIncidents = 0;
-
-
-        //Crew Simulation
 
         newData.crew = newData.crew.map(member => {
             const updatedMember = updateCrewMember(member, isCurrentlyNight, newData.habitat.co2);
@@ -225,7 +146,6 @@ const App: React.FC = () => {
             return updatedMember;
         });
         
-        //Calculations from Crew
         newData.mission.productivity = totalProductivity / newData.crew.length;
         newData.mission.incidents += highStressIncidents;
 
@@ -235,23 +155,6 @@ const App: React.FC = () => {
 
     return () => clearInterval(simulationInterval);
   }, [componentStatus]);
-
-  // Loop de RAF para suavizar displayData hacia data
-  useEffect(() => {
-    const tick = () => {
-      setDisplayData(prev => {
-        // t pequeño para suavizar (0.08 => transición lenta)
-        const t = 0.12;
-        const sm = smoothTowards(prev, data, t);
-        return sm;
-      });
-      rafRef.current = requestAnimationFrame(tick);
-    }
-    rafRef.current = requestAnimationFrame(tick);
-    return () => {
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
-    }
-  }, [data]);
 
    useEffect(() => {
     const dayNightInterval = setInterval(() => {
@@ -279,15 +182,18 @@ const App: React.FC = () => {
 
       <div className="md:col-start-2 md:row-start-2">
         <main className="col-span-1 flex flex-col gap-4 overflow-hidden min-h-0">
-          {/* Visual updates for lunar surface and Atacama environment would be best applied within the LunarSurface component */}
-          <LunarSurface rovers={displayData.rovers} />
+          <LunarSurface rovers={data.rovers} />
           <MissionStatusTabs mission={data.mission} crew={data.crew} />
         </main>
       </div>
 
       <div className="md:col-start-3 md:row-start-2">
-        <TelemetryPanel data={data} />
+        <TelemetryPanel data={data} onOpenCarousel={(start = 0) => { setCarouselIndex(start); setCarouselOpen(true); }} />
       </div>
+
+      {carouselOpen && (
+        <Carousel images={carouselImages} startIndex={carouselIndex} onClose={() => setCarouselOpen(false)} />
+      )}
     </div>
   );
 };
